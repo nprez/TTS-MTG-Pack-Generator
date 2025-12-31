@@ -373,7 +373,10 @@ function parseCardData(data, color, packIndex, slotIndex, url, foil)
         end
     end
     local cardData = JSON.decode(data.text)
-    local name = cardData["name"]
+    local name = cardData["printed_name"]
+    if name == nil then
+        name = cardData["name"]
+    end
     if (not foil) and (packContents[packIndex][name] ~= nil) then
         Wait.frames(
             function()
@@ -454,7 +457,10 @@ function parseRelatedCardData(data, color, url)
         end
     end
     local cardData = JSON.decode(data.text)
-    local name = cardData["name"]
+    local name = cardData["printed_name"]
+    if name == nil then
+        name = cardData["name"]
+    end
     local cardFront
     if cardData["layout"] == "transform" or cardData["layout"] == "modal_dfc" then
         cardFront = cardData["card_faces"][1]["image_uris"]["normal"]
