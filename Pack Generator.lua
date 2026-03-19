@@ -112,6 +112,11 @@ local maxRetries = 20
 local retryWaitFrames = 60
 local delayFrames = 6
 
+local scryfallHeaders = {
+    Accept = "*/*",
+    ["User-Agent"] = "MTGReprintScript/1.0"
+}
+
 function onLoad()
     math.randomseed(os.time())
     math.random(); math.random(); math.random()
@@ -304,7 +309,7 @@ function createPack(color, set, packIndex)
     for i=1, commons do
         Wait.frames(
             function()
-                WebRequest.get(url..urlencode(" -t:basic r:c"), function(data) parseCardData(data, color, packIndex, 1, url..urlencode(" -t:basic r:c"), false) end)
+                WebRequest.custom(url..urlencode(" -t:basic r:c"), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, 1, url..urlencode(" -t:basic r:c"), false) end)
             end,
             delayFrames
         )
@@ -312,7 +317,7 @@ function createPack(color, set, packIndex)
     for i=1, uncommons do
         Wait.frames(
             function()
-                WebRequest.get(url..urlencode(" -t:basic r:u"), function(data) parseCardData(data, color, packIndex, commons, url..urlencode(" -t:basic r:u"), false) end)
+                WebRequest.custom(url..urlencode(" -t:basic r:u"), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, commons, url..urlencode(" -t:basic r:u"), false) end)
             end,
             delayFrames
         )
@@ -322,9 +327,9 @@ function createPack(color, set, packIndex)
             function()
                 local rng = math.random(1, mythicTotal)
                 if mythicTotal > 0 and rng <= mythicChance then
-                    WebRequest.get(url..urlencode(" -t:basic r:m"), function(data) parseCardData(data, color, packIndex, commons+uncommons, url..urlencode(" -t:basic r:m"), false) end)
+                    WebRequest.custom(url..urlencode(" -t:basic r:m"), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, commons+uncommons, url..urlencode(" -t:basic r:m"), false) end)
                 else
-                    WebRequest.get(url..urlencode(" -t:basic r:r"), function(data) parseCardData(data, color, packIndex, commons+uncommons, url..urlencode(" -t:basic r:r"), false) end)
+                    WebRequest.custom(url..urlencode(" -t:basic r:r"), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, commons+uncommons, url..urlencode(" -t:basic r:r"), false) end)
                 end
             end,
             delayFrames
@@ -333,7 +338,7 @@ function createPack(color, set, packIndex)
     if smallSetsNoBasics[set] == nil then
        Wait.frames(
             function()
-                WebRequest.get(url..urlencode(" (!Plains or !Island or !Swamp or !Mountain or !Forest)"), function(data) parseCardData(data, color, packIndex, 20, url..urlencode(" (!Plains or !Island or !Swamp or !Mountain or !Forest)"), false) end)
+                WebRequest.custom(url..urlencode(" (!Plains or !Island or !Swamp or !Mountain or !Forest)"), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, 20, url..urlencode(" (!Plains or !Island or !Swamp or !Mountain or !Forest)"), false) end)
             end,
             delayFrames
         )
@@ -343,7 +348,7 @@ function createPack(color, set, packIndex)
         landURL = landURL..urlencode(" is:booster lang:english game:paper")
         Wait.frames(
             function()
-                WebRequest.get(landURL..urlencode(" (!Plains or !Island or !Swamp or !Mountain or !Forest)"), function(data) parseCardData(data, color, packIndex, 20, landURL..urlencode(" (!Plains or !Island or !Swamp or !Mountain or !Forest)"), false) end)
+                WebRequest.custom(landURL..urlencode(" (!Plains or !Island or !Swamp or !Mountain or !Forest)"), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, 20, landURL..urlencode(" (!Plains or !Island or !Swamp or !Mountain or !Forest)"), false) end)
             end,
             delayFrames
         )
@@ -359,7 +364,7 @@ function parseCardData(data, color, packIndex, slotIndex, url, foil)
                 function()
                     Wait.frames(
                         function()
-                            WebRequest.get(url, function(data) parseCardData(data, color, packIndex, slotIndex, url, foil) end)
+                            WebRequest.custom(url, "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, slotIndex, url, foil) end)
                         end,
                         delayFrames
                     )
@@ -382,7 +387,7 @@ function parseCardData(data, color, packIndex, slotIndex, url, foil)
             function()
                 Wait.frames(
                     function()
-                        WebRequest.get(url..urlencode(' -!"'..name..'"'), function(data) parseCardData(data, color, packIndex, slotIndex, url..urlencode(' -!"'..name..'"'), foil) end)
+                        WebRequest.custom(url..urlencode(' -!"'..name..'"'), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, slotIndex, url..urlencode(' -!"'..name..'"'), foil) end)
                     end,
                     delayFrames
                 )
@@ -417,14 +422,14 @@ function parseCardData(data, color, packIndex, slotIndex, url, foil)
             if part["component"] == "token" or part["component"] == "meld_result" then
                 Wait.frames(
                     function()
-                        WebRequest.get(part["uri"], function(data) parseRelatedCardData(data, color, part["uri"]) end)
+                        WebRequest.custom(part["uri"], "GET", true, nil, scryfallHeaders, function(data) parseRelatedCardData(data, color, part["uri"]) end)
                     end,
                     delayFrames
                 )
             elseif part["component"] == "combo_piece" and string.find(part["type_line"], "Emblem", 1, true) then
                 Wait.frames(
                     function()
-                        WebRequest.get(part["uri"], function(data) parseRelatedCardData(data, color, part["uri"]) end)
+                        WebRequest.custom(part["uri"], "GET", true, nil, scryfallHeaders, function(data) parseRelatedCardData(data, color, part["uri"]) end)
                     end,
                     delayFrames
                 )
@@ -443,7 +448,7 @@ function parseRelatedCardData(data, color, url)
                 function()
                     Wait.frames(
                         function()
-                            WebRequest.get(url, function(data) parseRelatedCardData(data, color, url) end)
+                            WebRequest.custom(url, "GET", true, nil, scryfallHeaders, function(data) parseRelatedCardData(data, color, url) end)
                         end,
                         delayFrames
                     )
@@ -530,7 +535,7 @@ function createFunkyPack(color, set, packIndex)
                                     newURL = "https://api.scryfall.com/cards/random?q="..urlencode("e:"..set.." (is:booster lang:english game:paper) ")
                                     newQ2 = "(!Plains or !Island or !Swamp or !Mountain or !Forest)"
                                 end
-                                WebRequest.get(newURL..urlencode(newQ2), function(data) parseCardData(data, color, packIndex, slotIndex, newURL..urlencode(newQ2), trim(newQ2) == "") end)
+                                WebRequest.custom(newURL..urlencode(newQ2), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, slotIndex, newURL..urlencode(newQ2), trim(newQ2) == "") end)
                             elseif newQ1 ~= "nil" then
                                 if starts_with(q1, "noset") then
                                     newQ1 = newQ1:sub(#"noset"+1, #newQ1)
@@ -543,7 +548,7 @@ function createFunkyPack(color, set, packIndex)
                                     newURL = "https://api.scryfall.com/cards/random?q="..urlencode("e:"..set.." (is:booster lang:english game:paper) ")
                                     newQ1 = "(!Plains or !Island or !Swamp or !Mountain or !Forest)"
                                 end
-                                WebRequest.get(newURL..urlencode(newQ1), function(data) parseCardData(data, color, packIndex, slotIndex, newURL..urlencode(newQ1), trim(newQ1) == "") end)
+                                WebRequest.custom(newURL..urlencode(newQ1), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, slotIndex, newURL..urlencode(newQ1), trim(newQ1) == "") end)
                             end
                         end,
                         delayFrames
@@ -571,7 +576,7 @@ function createFunkyPack(color, set, packIndex)
                                 newURL = "https://api.scryfall.com/cards/random?q="..urlencode("e:"..set.." (is:booster lang:english game:paper) ")
                                 newQuery = "(!Plains or !Island or !Swamp or !Mountain or !Forest)"
                             end
-                            WebRequest.get(newURL..urlencode(newQuery), function(data) parseCardData(data, color, packIndex, slotIndex, newURL..urlencode(newQuery), trim(newQuery) == "") end)
+                            WebRequest.custom(newURL..urlencode(newQuery), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, slotIndex, newURL..urlencode(newQuery), trim(newQuery) == "") end)
                         end,
                         delayFrames
                     )
