@@ -4,6 +4,7 @@ local setName = ""
 local packCount = 0
 local randomPacks = false
 local magicBack = "http://cloud-3.steamusercontent.com/ugc/1044218919659567154/72AEBC61B3958199DE4389B0A934D68CE53D030B/"
+local scryfallURL = "https://api.scryfall.com/cards/random?q="
 local smallSetsNoBasics = {["CON"]="ALA", ["ARB"]="ALA", ["WWK"]="ZEN", ["GTC"]="RTR", ["BNG"]="THS", ["JOU"]="THS", ["AER"]="KLD"}
 local oldSets = {"LEA", "LEB", "2ED", "3ED", "4ED", "5ED", "6ED", "ICE", "MIR", "VIS", "WTH", "TMP", "STH", "EXO", "USG", "ULG", "UDS", "MMQ", "NEM", "PCY", "INV", "PLS", "APC", "ODY", "TOR", "JUD", "ONS", "LGN", "SCG", "MRD", "DST", "5DN", "CHK", "BOK", "SOK", "RAV", "GPT", "DIS", "CSP", "LRW", "MOR", "SHM", "EVE"}
 local oldCoreSets = {"7ED", "8ED", "UNH", "9ED", "10E"}
@@ -109,8 +110,9 @@ local retryCount = {}
 local packContents = {}
 local relatedRetryCount = 0
 local maxRetries = 20
-local retryWaitFrames = 60
-local delayFrames = 6
+local retryWaitSeconds = 1
+local delaySeconds = 0.5
+local delaySecondsShorter = 0.1
 
 local scryfallHeaders = {
     Accept = "*/*",
@@ -295,7 +297,7 @@ function submit(obj, color, alt_click)
 end
 
 function createPack(color, set, packIndex)
-    local url = "https://api.scryfall.com/cards/random?q=e"..urlencode(":")
+    local url = scryfallURL.."e"..urlencode(":")
     url = url..set
     url = url..urlencode(" is:booster lang:english game:paper")
     local raritiesString = getRarities(set)
@@ -307,23 +309,23 @@ function createPack(color, set, packIndex)
     local mythicChance = tonumber(rarities[4])
     local mythicTotal = tonumber(rarities[5])
     for i=1, commons do
-        Wait.frames(
+        Wait.time(
             function()
                 WebRequest.custom(url..urlencode(" -t:basic r:c"), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, 1, url..urlencode(" -t:basic r:c"), false) end)
             end,
-            delayFrames
+            delaySeconds
         )
     end
     for i=1, uncommons do
-        Wait.frames(
+        Wait.time(
             function()
                 WebRequest.custom(url..urlencode(" -t:basic r:u"), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, commons, url..urlencode(" -t:basic r:u"), false) end)
             end,
-            delayFrames
+            delaySeconds
         )
     end
     for i=1, rareMythics do
-        Wait.frames(
+        Wait.time(
             function()
                 local rng = math.random(1, mythicTotal)
                 if mythicTotal > 0 and rng <= mythicChance then
@@ -332,25 +334,25 @@ function createPack(color, set, packIndex)
                     WebRequest.custom(url..urlencode(" -t:basic r:r"), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, commons+uncommons, url..urlencode(" -t:basic r:r"), false) end)
                 end
             end,
-            delayFrames
+            delaySeconds
         )
     end
     if smallSetsNoBasics[set] == nil then
-       Wait.frames(
+       Wait.time(
             function()
                 WebRequest.custom(url..urlencode(" (!Plains or !Island or !Swamp or !Mountain or !Forest)"), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, 20, url..urlencode(" (!Plains or !Island or !Swamp or !Mountain or !Forest)"), false) end)
             end,
-            delayFrames
+            delaySeconds
         )
     elseif smallSetsNoBasics[set] ~= "nil" then
-        local landURL = "https://api.scryfall.com/cards/random?q=e"..urlencode(":")
+        local landURL = scryfallURL.."e"..urlencode(":")
         landURL = landURL..smallSetsNoBasics[set]
         landURL = landURL..urlencode(" is:booster lang:english game:paper")
-        Wait.frames(
+        Wait.time(
             function()
                 WebRequest.custom(landURL..urlencode(" (!Plains or !Island or !Swamp or !Mountain or !Forest)"), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, 20, landURL..urlencode(" (!Plains or !Island or !Swamp or !Mountain or !Forest)"), false) end)
             end,
-            delayFrames
+            delaySeconds
         )
     end
 end
@@ -360,16 +362,16 @@ function parseCardData(data, color, packIndex, slotIndex, url, foil)
     if not status then
         retryCount[packIndex] = retryCount[packIndex] + 1
         if retryCount[packIndex] <= maxRetries then
-            Wait.frames(
+            Wait.time(
                 function()
-                    Wait.frames(
+                    Wait.time(
                         function()
                             WebRequest.custom(url, "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, slotIndex, url, foil) end)
                         end,
-                        delayFrames
+                        delaySeconds
                     )
                 end,
-                retryWaitFrames
+                retryWaitSeconds
             )
             return
         else
@@ -383,16 +385,16 @@ function parseCardData(data, color, packIndex, slotIndex, url, foil)
         name = cardData["name"]
     end
     if (not foil) and (packContents[packIndex][name] ~= nil) then
-        Wait.frames(
+        Wait.time(
             function()
-                Wait.frames(
+                Wait.time(
                     function()
                         WebRequest.custom(url..urlencode(' -!"'..name..'"'), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, slotIndex, url..urlencode(' -!"'..name..'"'), foil) end)
                     end,
-                    delayFrames
+                    delaySeconds
                 )
             end,
-            retryWaitFrames
+            retryWaitSeconds
         )
         return
     end
@@ -420,18 +422,18 @@ function parseCardData(data, color, packIndex, slotIndex, url, foil)
     if cardData["all_parts"] then
         for _,part in ipairs(cardData["all_parts"]) do
             if part["component"] == "token" or part["component"] == "meld_result" then
-                Wait.frames(
+                Wait.time(
                     function()
                         WebRequest.custom(part["uri"], "GET", true, nil, scryfallHeaders, function(data) parseRelatedCardData(data, color, part["uri"]) end)
                     end,
-                    delayFrames
+                    delaySecondsShorter
                 )
             elseif part["component"] == "combo_piece" and string.find(part["type_line"], "Emblem", 1, true) then
-                Wait.frames(
+                Wait.time(
                     function()
                         WebRequest.custom(part["uri"], "GET", true, nil, scryfallHeaders, function(data) parseRelatedCardData(data, color, part["uri"]) end)
                     end,
-                    delayFrames
+                    delaySecondsShorter
                 )
             end
         end
@@ -444,16 +446,16 @@ function parseRelatedCardData(data, color, url)
     if not status then
         relatedRetryCount = relatedRetryCount + 1
         if relatedRetryCount <= maxRetries then
-            Wait.frames(
+            Wait.time(
                 function()
-                    Wait.frames(
+                    Wait.time(
                         function()
                             WebRequest.custom(url, "GET", true, nil, scryfallHeaders, function(data) parseRelatedCardData(data, color, url) end)
                         end,
-                        delayFrames
+                        delaySecondsShorter
                     )
                 end,
-                retryWaitFrames
+                retryWaitSeconds
             )
             return
         else
@@ -486,7 +488,7 @@ function createFunkyPack(color, set, packIndex)
         recursive = true
         instructions = instructions:sub(#"recursive"+1, #instructions)     
     end
-    local url = "https://api.scryfall.com/cards/random?q="..urlencode("e:"..set.." (is:booster lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard -!Plains -!Island -!Swamp -!Mountain -!Forest) ")
+    local url = scryfallURL..urlencode("e:"..set.." (is:booster lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard -!Plains -!Island -!Swamp -!Mountain -!Forest) ")
     local counts = {}
     local index = 0
     for cardType in instructions:gmatch("([^|]+)") do
@@ -517,7 +519,7 @@ function createFunkyPack(color, set, packIndex)
                         createFunkyPack(color, q1, packIndex)
                     end
                 else
-                    Wait.frames(
+                    Wait.time(
                         function()
                             local rng = math.random(1, tonumber(odds2))
                             local newURL = url
@@ -526,32 +528,32 @@ function createFunkyPack(color, set, packIndex)
                             if rng <= tonumber(odds1) then
                                 if starts_with(q2, "noset") then
                                     newQ2 = newQ2:sub(#"noset"+1, #newQ2)
-                                    newURL = "https://api.scryfall.com/cards/random?q="..urlencode("(lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard -!Plains -!Island -!Swamp -!Mountain -!Forest) ")
+                                    newURL = scryfallURL..urlencode("(lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard -!Plains -!Island -!Swamp -!Mountain -!Forest) ")
                                 elseif starts_with(q2, "otherbasic") then
                                     newQ2 = newQ2:sub(#"otherbasic"+1, #newQ2).." (!Plains or !Island or !Swamp or !Mountain or !Forest)"
-                                    newURL = "https://api.scryfall.com/cards/random?q="..urlencode("(lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard) ")
+                                    newURL = scryfallURL..urlencode("(lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard) ")
                                 end
                                 if newQ2 == "basics" then
-                                    newURL = "https://api.scryfall.com/cards/random?q="..urlencode("e:"..set.." (is:booster lang:english game:paper) ")
+                                    newURL = scryfallURL..urlencode("e:"..set.." (is:booster lang:english game:paper) ")
                                     newQ2 = "(!Plains or !Island or !Swamp or !Mountain or !Forest)"
                                 end
                                 WebRequest.custom(newURL..urlencode(newQ2), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, slotIndex, newURL..urlencode(newQ2), trim(newQ2) == "") end)
                             elseif newQ1 ~= "nil" then
                                 if starts_with(q1, "noset") then
                                     newQ1 = newQ1:sub(#"noset"+1, #newQ1)
-                                    newURL = "https://api.scryfall.com/cards/random?q="..urlencode("(lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard -!Plains -!Island -!Swamp -!Mountain -!Forest) ")
+                                    newURL = scryfallURL..urlencode("(lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard -!Plains -!Island -!Swamp -!Mountain -!Forest) ")
                                 elseif starts_with(q1, "otherbasic") then
                                     newQ1 = newQ1:sub(#"otherbasic"+1, #newQ1).." (!Plains or !Island or !Swamp or !Mountain or !Forest)"
-                                    newURL = "https://api.scryfall.com/cards/random?q="..urlencode("(lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard) ")
+                                    newURL = scryfallURL..urlencode("(lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard) ")
                                 end
                                 if newQ1 == "basics" then
-                                    newURL = "https://api.scryfall.com/cards/random?q="..urlencode("e:"..set.." (is:booster lang:english game:paper) ")
+                                    newURL = scryfallURL..urlencode("e:"..set.." (is:booster lang:english game:paper) ")
                                     newQ1 = "(!Plains or !Island or !Swamp or !Mountain or !Forest)"
                                 end
                                 WebRequest.custom(newURL..urlencode(newQ1), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, slotIndex, newURL..urlencode(newQ1), trim(newQ1) == "") end)
                             end
                         end,
-                        delayFrames
+                        delaySeconds
                     )
                 end
             end
@@ -561,24 +563,24 @@ function createFunkyPack(color, set, packIndex)
                 if recursive then
                     createFunkyPack(color, query, packIndex)
                 else
-                    Wait.frames(
+                    Wait.time(
                         function()
                             local newURL = url
                             local newQuery = query
                             if starts_with(newQuery, "noset") then
                                 newQuery = newQuery:sub(#"noset"+1, #newQuery)
-                                newURL = "https://api.scryfall.com/cards/random?q="..urlencode("(lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard -!Plains -!Island -!Swamp -!Mountain -!Forest) ")
+                                newURL = scryfallURL..urlencode("(lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard -!Plains -!Island -!Swamp -!Mountain -!Forest) ")
                             elseif starts_with(newQuery, "otherbasic") then
                                 newQuery = newQuery:sub(#"otherbasic"+1, #newQuery).." (!Plains or !Island or !Swamp or !Mountain or !Forest)"
-                                newURL = "https://api.scryfall.com/cards/random?q="..urlencode("(lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard) ")
+                                newURL = scryfallURL..urlencode("(lang:english game:paper -t:token -t:plane -t:scheme -t:phenomenon -t:dungeon -t:vanguard) ")
                             end
                             if newQuery == "basics" then
-                                newURL = "https://api.scryfall.com/cards/random?q="..urlencode("e:"..set.." (is:booster lang:english game:paper) ")
+                                newURL = scryfallURL..urlencode("e:"..set.." (is:booster lang:english game:paper) ")
                                 newQuery = "(!Plains or !Island or !Swamp or !Mountain or !Forest)"
                             end
                             WebRequest.custom(newURL..urlencode(newQuery), "GET", true, nil, scryfallHeaders, function(data) parseCardData(data, color, packIndex, slotIndex, newURL..urlencode(newQuery), trim(newQuery) == "") end)
                         end,
-                        delayFrames
+                        delaySeconds
                     )
                 end
             end
